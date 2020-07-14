@@ -1,0 +1,47 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-dep
+  labels:
+    app: product-app
+spec:
+  selector:
+    matchLabels:
+      app: product-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: product-app
+    spec:
+      containers:
+        - name: product-dep
+          image: docker.io/mrudul03/do-product-service:v01
+          imagePullPolicy: Always
+          readinessProbe:
+            httpGet:
+              port: 8090
+              path: /actuator/health
+            initialDelaySeconds: 30
+          livenessProbe:
+            httpGet:
+              port: 8090
+              path: /actuator/health
+            initialDelaySeconds: 30
+          ports:
+            - containerPort: 8090
+          env:
+            - name: message
+              valueFrom:
+                configMapKeyRef:
+                  name: product-config
+                  key: message
+                  
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: product-config
+data:
+  message: Hello World from GCP Product Service!                  

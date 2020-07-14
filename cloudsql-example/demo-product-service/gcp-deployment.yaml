@@ -1,0 +1,76 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-dep
+  labels:
+    app: product-app
+spec:
+  selector:
+    matchLabels:
+      app: product-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: product-app
+    spec:
+      #serviceAccount: postgres
+      containers:
+        - name: product-dep
+          image: gcr.io/msa-gke-demo/demo-product-service:v01
+          imagePullPolicy: Always
+          readinessProbe:
+            httpGet:
+              port: 8080
+              path: /actuator/health
+            initialDelaySeconds: 30
+          livenessProbe:
+            httpGet:
+              port: 8080
+              path: /actuator/health
+            initialDelaySeconds: 30
+          ports:
+            - containerPort: 8080
+          env:
+            - name: message
+              valueFrom:
+                configMapKeyRef:
+                  name: product-config
+                  key: message
+                  
+        # We are pulling the Cloud SQL Proxy container from the official Google
+        # container repository
+        - name: cloudsql-proxy 
+          image: gcr.io/cloudsql-docker/gce-proxy:1.14
+          imagePullPolicy: Always
+          securityContext:
+            runAsUser: 2  # non-root user
+            allowPrivilegeEscalation: false
+            
+          # Connecting to the PRIVATE IP of the DB instance.
+          # We will be getting the GCP credentials dynamically via the metadata
+          # service proxied by the workload identity agent running inside GKE
+          # that maps the Kubernetes Service Account to the GCP Service account
+          # automatically.
+          command: [
+            "/cloud_sql_proxy",
+            "-instances=msa-gke-demo:asia-east1:postgres-msa-instance=tcp:5432",
+            "-credential_file=/secrets/cloudsql/key.json"
+          ]
+            
+          volumeMounts:
+            - name: cloudsql-instance-credentials
+              mountPath: /secrets/cloudsql
+              readOnly: true
+            - name: cloudsql
+              mountPath: /cloudsql
+          
+      volumes:
+        - name: cloudsql-instance-credentials
+          secret:
+            secretName: cloudsql-instance-credentials
+                
+        - name: cloudsql
+          emptyDir:
+              

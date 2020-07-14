@@ -1,0 +1,29 @@
+https://itnext.io/configure-postgresql-on-your-mac-from-scratch-197f8eb4048a
+https://mkyong.com/spring-boot/spring-boot-spring-data-jpa-postgresql/
+brew services stop postgresql
+ps aux | grep postgres
+kill $PID
+
+brew install postgresql
+postgres --version
+
+pg_ctl -D /usr/local/var/postgres start
+pg_ctl -D /usr/local/var/postgres stop
+
+
+psql postgres
+
+create user demouser;
+alter user demouser with encrypted password 'demouser';
+
+create database productdb;
+grant all privileges on database productdb to demouser;
+\q
+
+\c productdb demouser
+
+
+DROP TABLE productdb.productdb.flyway_schema_history
+
+
+
