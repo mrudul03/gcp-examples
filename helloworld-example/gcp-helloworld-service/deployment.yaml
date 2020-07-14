@@ -1,0 +1,62 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: msa-gke
+  labels:
+    app: msa
+spec:
+  selector:
+    matchLabels:
+      app: msa
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: msa
+    spec:
+      containers:
+        - name: msa-gke
+          image: gcr.io/msakubernetes/gcp-helloworld-service:v01
+          imagePullPolicy: Always
+          readinessProbe:
+            httpGet:
+              port: 8080
+              path: /actuator/health
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet:
+              port: 8080
+              path: /actuator/health
+            initialDelaySeconds: 5
+          ports:
+            - containerPort: 8080
+          env:
+            - name: message
+              valueFrom:
+                configMapKeyRef:
+                  name: message-config
+                  key: message
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: message-config
+data:
+  message: Hello World from GKE!
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: msa-gke
+spec:
+  selector:
+    app: msa
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+  type: LoadBalancer
+  
+  
