@@ -1,0 +1,43 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: videoservice-dep
+  labels:
+    app: videoservice-app
+spec:
+  selector:
+    matchLabels:
+      app: videoservice-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: videoservice-app
+    spec:
+      volumes:
+        - name: google-cloud-key
+          secret:
+            secretName: pubsub-key
+      containers:
+        - name: videoservice-dep
+          image: gcr.io/msa-gke-demo/video-service:v01
+          volumeMounts:
+            - name: google-cloud-key
+              mountPath: /var/secrets/google
+          env:
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /var/secrets/google/key.json
+          imagePullPolicy: Always
+          readinessProbe:
+            httpGet:
+              port: 8090
+              path: /actuator/health
+            initialDelaySeconds: 30
+          livenessProbe:
+            httpGet:
+              port: 8090
+              path: /actuator/health
+            initialDelaySeconds: 30          
+          ports:
+            - containerPort: 8090

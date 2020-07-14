@@ -1,0 +1,10 @@
+
+server:
+  port: 8090
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: info,metrics,health
+        
