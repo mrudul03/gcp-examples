@@ -1,0 +1,43 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: imgservice-dep
+  labels:
+    app: imgservice-app
+spec:
+  selector:
+    matchLabels:
+      app: imgservice-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: imgservice-app
+    spec:
+      volumes:
+        - name: google-cloud-key
+          secret:
+            secretName: pubsub-key
+      containers:
+        - name: imgservice-dep
+          image: gcr.io/msa-gke-demo/image-service:v01
+          volumeMounts:
+            - name: google-cloud-key
+              mountPath: /var/secrets/google
+          env:
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /var/secrets/google/key.json
+          imagePullPolicy: Always
+          readinessProbe:
+            httpGet:
+              port: 8080
+              path: /actuator/health
+            initialDelaySeconds: 30
+          livenessProbe:
+            httpGet:
+              port: 8080
+              path: /actuator/health
+            initialDelaySeconds: 30          
+          ports:
+            - containerPort: 8080
