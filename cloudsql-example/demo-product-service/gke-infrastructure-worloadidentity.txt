@@ -1,0 +1,62 @@
+
+1.
+
+gcloud container clusters get-credentials msa-cluster-wi
+
+2.
+export PROJECT_ID=msa-gke-demo
+export CLUSTER_NAME=msa-cluster-wi
+export CLUSTER_VERSION=<cluster_version>
+
+3. You can either create a new cluster with the workload identity
+gcloud container clusters delete ${CLUSTER_NAME} --zone asia-east1-a
+
+gcloud beta container clusters create ${CLUSTER_NAME} --identity-namespace=${PROJECT_ID}.svc.id.goog --zone asia-east1-a --num-nodes=3 --enable-autoupgrade 
+gcloud container clusters get-credentials ${CLUSTER_NAME} --zone asia-east1-a
+
+5. Like most other resources, Kubernetes service accounts live in a Namespace. Create the Namespace to use for the Kubernetes service account
+kubectl create namespace <namespace> msa
+
+6. set Kubernetes service account name, namespace and google service account name
+export K8S_NAMESPACE=msa
+export K8S_NAMESPACE=default
+export KSA_NAME=msa-gke-sa
+export GSA_NAME=msa-gcp-wi-sa
+
+7. Create the Kubernetes service account
+kubectl create serviceaccount --namespace ${K8S_NAMESPACE} ${KSA_NAME}
+
+8. Create the google service account
+gcloud iam service-accounts create ${GSA_NAME}
+Created service account [msa-gcp-wi-sa].
+
+9. Create the binding between the Kubernetes service account and the google service account
+gcloud iam service-accounts add-iam-policy-binding --role roles/iam.workloadIdentityUser --member "serviceAccount:${PROJECT_ID}.svc.id.goog[${K8S_NAMESPACE}/${KSA_NAME}]" ${GSA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com
+
+gcloud projects add-iam-policy-binding ${PROJECT_ID} --member="serviceAccount:${GSA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com" --role="roles/cloudsql.client"
+
+10. Add the iam.gke.io/gcp-service-account=[GSA_NAME]@[PROJECT_ID] annotation to the Kubernetes service account, using the email address of the Google service account:
+kubectl annotate serviceaccount --namespace ${K8S_NAMESPACE} ${KSA_NAME} iam.gke.io/gcp-service-account=${GSA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com
+
+11. Create Postgres Instance
+INSTANCE_NAME=pg-msa-instance-1
+gcloud sql instances create $INSTANCE_NAME --database-version=POSTGRES_11 --cpu=2 --memory=7680MiB --region="asia-east1"
+gcloud sql instances delete $INSTANCE_NAME
+
+12. Add the instance connection name as an environment variable:
+export INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe $INSTANCE_NAME --format='value(connectionName)')
+echo ${INSTANCE_CONNECTION_NAME}
+msa-gke-demo:asia-east1:pg-msa-instance-1
+
+Create a database user  Add the instance connection name as an environment variable:
+CLOUD_SQL_PASSWORD=$(openssl rand -base64 18)
+CLOUD_SQL_PASSWORD=<password>
+gcloud sql users create demomaster --host=% --instance $INSTANCE_NAME --password $CLOUD_SQL_PASSWORD
+
+kubectl create secret generic cloudsql-db-credentials --from-literal username=demomaster --from-literal password=demomaster --from-literal connectionName=msa-gke-demo:asia-east1:pg-msa-instance-1 --from-literal projectId=msa-gke-demo
+
+kubectl apply -f gcp-wi-deployment.yaml
+kubectl apply -f gcp-wi-service.yaml
+
+http://34.80.214.10/api/products-service/products
+
