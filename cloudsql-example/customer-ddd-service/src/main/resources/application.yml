@@ -1,0 +1,26 @@
+
+server:
+  port: 8083
+
+
+spring:
+  application:
+    name: template-app
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:5432/customerdb?currentSchema=customerdb
+    username: customerdbuser
+    password: ChangeMe
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    schemas:
+      - customerdb
+
+management:
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: info,metrics,health
+          

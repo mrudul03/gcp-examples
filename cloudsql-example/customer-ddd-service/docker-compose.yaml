@@ -1,0 +1,19 @@
+version: '3.1'
+services:
+  app:
+    container_name: customer-ddd-service
+    image: mrudul03/customer-ddd-service:v01
+    build: ./
+    ports:
+      - "8083:8083"
+    depends_on:
+      - dbpostgresql
+  
+  dbpostgresql:
+    image: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=ChangeMe
+      - POSTGRES_USER=customerdbuser
+      - POSTGRES_DB=customerdb
